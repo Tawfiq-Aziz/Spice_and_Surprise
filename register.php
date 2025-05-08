@@ -204,7 +204,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <div class="form-group">
                         <label for="role">Register As</label>
                         <select name="role" id="role" required>
-                            <option value="explorer">Food Explorer</option>
+                            <option value="food_explorer">Food Explorer</option>
                             <option value="vendor">Vendor</option>
                         </select>
                     </div>

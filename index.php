@@ -42,7 +42,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             ];
             
             // DETERMINE USER ROLE
-            $role = 'explorer'; // Default role
+            $role = 'food_explorer'; // Default role
             
             // Check if user_type column exists
             if (isset($user['user_type'])) {
