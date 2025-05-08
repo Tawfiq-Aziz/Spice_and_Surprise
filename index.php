@@ -2,255 +2,112 @@
 session_start();
 require 'db.php';
 
+// Initialize all variables
 $error = '';
-
-// Let's first examine the structure of the user table to see exactly what columns exist
-function debugTableStructure($conn) {
-    $debug_info = "";
-    
-    // Show table structure
-    $result = $conn->query("DESCRIBE user");
-    if ($result) {
-        $debug_info .= "<h3>User Table Structure:</h3><ul>";
-        while($row = $result->fetch_assoc()) {
-            $debug_info .= "<li>Column: <strong>{$row['Field']}</strong>, Type: {$row['Type']}, Key: {$row['Key']}</li>";
-        }
-        $debug_info .= "</ul>";
-    } else {
-        $debug_info .= "<p>Error fetching table structure: " . $conn->error . "</p>";
-        
-        // Let's also try with backticks to handle special table names
-        $result = $conn->query("DESCRIBE `user`");
-        if ($result) {
-            $debug_info .= "<h3>User Table Structure (with backticks):</h3><ul>";
-            while($row = $result->fetch_assoc()) {
-                $debug_info .= "<li>Column: <strong>{$row['Field']}</strong>, Type: {$row['Type']}, Key: {$row['Key']}</li>";
-            }
-            $debug_info .= "</ul>";
-        } else {
-            $debug_info .= "<p>Error fetching table structure with backticks: " . $conn->error . "</p>";
-        }
-    }
-    
-    // Get all tables in database
-    $result = $conn->query("SHOW TABLES");
-    if ($result) {
-        $debug_info .= "<h3>All Tables in Database:</h3><ul>";
-        while($row = $result->fetch_row()) {
-            $debug_info .= "<li>{$row[0]}</li>";
-        }
-        $debug_info .= "</ul>";
-    } else {
-        $debug_info .= "<p>Error fetching tables: " . $conn->error . "</p>";
-    }
-    
-    return $debug_info;
-}
-
-// Only show debug info if requested
 $show_debug = isset($_GET['debug']) && $_GET['debug'] == 1;
-$debug_output = "";
-
-if ($show_debug) {
-    $debug_output = debugTableStructure($conn);
-}
+$debug_output = '';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = sanitize_input($_POST["email"], $conn);
     $password = $_POST["password"];
     
-    // Try a query that doesn't depend on column names first to see if the row exists
-    $check_stmt = $conn->prepare("SELECT * FROM user WHERE email = ?");
-    if ($check_stmt === false) {
+    // First check if user exists
+    $stmt = $conn->prepare("SELECT * FROM `user` WHERE email = ?");
+    if ($stmt === false) {
         die('MySQL prepare error: ' . $conn->error);
     }
     
-    $check_stmt->bind_param("s", $email);
-    $check_stmt->execute();
-    $check_result = $check_stmt->get_result();
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $result = $stmt->get_result();
     
-    if ($check_result->num_rows === 1) {
-        $user = $check_result->fetch_assoc();
+    if ($result->num_rows === 1) {
+        $user = $result->fetch_assoc();
         
-        // Let's see the actual column names (in debug mode)
-        if ($show_debug) {
-            $debug_output .= "<h3>User Data from Database:</h3><ul>";
-            foreach ($user as $key => $value) {
-                $debug_output .= "<li><strong>$key</strong>: " . (($key === 'password') ? '[HIDDEN]' : $value) . "</li>";
-            }
-            $debug_output .= "</ul>";
-        }
-        
-        // Now use the actual column name for ID based on what we retrieved
-        $id_column = null;
-        // Check for common ID column names
-        foreach (['user_id', 'id', 'userid', 'uid', 'u_id'] as $possible_id) {
-            if (isset($user[$possible_id])) {
-                $id_column = $possible_id;
-                break;
-            }
-        }
-        
-        // Verify the password
+        // Verify password
         if (password_verify($password, $user['password'])) {
-            if ($id_column) {
-                $_SESSION['user_id'] = $user[$id_column];  // Use the discovered ID column
-                if ($show_debug) {
-                    $debug_output .= "<p>Using <strong>$id_column</strong> as ID column with value: {$user[$id_column]}</p>";
-                }
-            } else {
-                die("Could not determine ID column in user table!");
+            // Get user ID - checking multiple possible column names
+            $user_id = $user['user_id'] ?? $user['id'] ?? $user['u_id'] ?? null;
+            
+            if (!$user_id) {
+                die("Could not determine user ID");
             }
             
-            $_SESSION['name'] = $user['name'];
-            $_SESSION['email'] = $user['email'];
-            $_SESSION['points'] = $user['points_earned'];
-
-            // Detect role - this part might also need fixing if column names differ
-            $role = '';
-            $user_id = $user[$id_column];  // Use the discovered ID column
-
-            // For debug, let's try different role detection
-            if ($show_debug) {
-                // Let's also see what role information exists in the database
-                $debug_output .= "<h3>Role Detection:</h3>";
-                
-                // Check if user_type column exists and use it directly
-                if (isset($user['user_type'])) {
-                    $debug_output .= "<p>user_type column exists with value: {$user['user_type']}</p>";
-                    $role = strtolower($user['user_type']);
-                } else {
-                    $debug_output .= "<p>user_type column not found, checking role tables</p>";
-                
-                    // Check Admin
-                    $role_check = $conn->prepare("SELECT * FROM Admin WHERE u_id = ? OR user_id = ?");
-                    if ($role_check === false) {
-                        $debug_output .= "<p>Admin table query error: " . $conn->error . "</p>";
-                    } else {
-                        $role_check->bind_param("ii", $user_id, $user_id);
-                        $role_check->execute();
-                        $role_result = $role_check->get_result();
-                        $debug_output .= "<p>Admin check rows: " . $role_result->num_rows . "</p>";
-                        if ($role_result->num_rows === 1) {
-                            $role = 'admin';
-                        }
-                        $role_check->close();
+            // Set session variables
+            $_SESSION = [
+                'user_id' => $user_id,
+                'name' => $user['name'],
+                'email' => $user['email'],
+                'points' => $user['points_earned'] ?? 0
+            ];
+            
+            // DETERMINE USER ROLE
+            $role = 'explorer'; // Default role
+            
+            // Check if user_type column exists
+            if (isset($user['user_type'])) {
+                $role = strtolower($user['user_type']);
+            } 
+            // If no user_type column, check role tables
+            else {
+                // Check if admin
+                $admin_check = $conn->prepare("SELECT 1 FROM `Admin` WHERE `user_id` = ?");
+                if ($admin_check && $admin_check->bind_param("i", $user_id) && $admin_check->execute()) {
+                    if ($admin_check->get_result()->num_rows === 1) {
+                        $role = 'admin';
                     }
-                    
-                    // Check Vendor if not admin
-                    if (!$role) {
-                        $role_check = $conn->prepare("SELECT * FROM Vendor WHERE user_id = ?");
-                        if ($role_check === false) {
-                            $debug_output .= "<p>Vendor table query error: " . $conn->error . "</p>";
-                        } else {
-                            $role_check->bind_param("i", $user_id);
-                            $role_check->execute();
-                            $role_result = $role_check->get_result();
-                            $debug_output .= "<p>Vendor check rows: " . $role_result->num_rows . "</p>";
-                            if ($role_result->num_rows === 1) {
-                                $role = 'vendor';
-                            }
-                            $role_check->close();
-                        }
-                    }
-                    
-                    // Default to Food Explorer if not admin or vendor
-                    if (!$role) {
-                        $role = 'explorer';
-                    }
+                    $admin_check->close();
                 }
                 
-                $debug_output .= "<p>Final determined role: <strong>$role</strong></p>";
-            } else {
-                // Normal role detection
-                // Try using user_type column if it exists
-                if (isset($user['user_type'])) {
-                    $role = strtolower($user['user_type']);
-                } else {
-                    // Check Admin - notice we're checking both column names
-                    $role_check = $conn->prepare("SELECT * FROM Admin WHERE u_id = ?");
-                    if ($role_check === false) {
-                        // Try alternate column name
-                        $role_check = $conn->prepare("SELECT * FROM Admin WHERE user_id = ?");
-                        if ($role_check === false) {
-                            die('MySQL prepare error for Admin check: ' . $conn->error);
-                        }
-                    }
-                    $role_check->bind_param("i", $user_id);
-                    $role_check->execute();
-                    $role_result = $role_check->get_result();
-                    if ($role_result->num_rows === 1) {
-                        $role = 'admin';
-                    } else {
-                        // Check Vendor
-                        $role_check = $conn->prepare("SELECT * FROM Vendor WHERE user_id = ?");
-                        if ($role_check === false) {
-                            die('MySQL prepare error for Vendor check: ' . $conn->error);
-                        }
-                        $role_check->bind_param("i", $user_id);
-                        $role_check->execute();
-                        $role_result = $role_check->get_result();
-                        if ($role_result->num_rows === 1) {
+                // If not admin, check if vendor
+                if ($role !== 'admin') {
+                    $vendor_check = $conn->prepare("SELECT 1 FROM `Vendor` WHERE `user_id` = ?");
+                    if ($vendor_check && $vendor_check->bind_param("i", $user_id) && $vendor_check->execute()) {
+                        if ($vendor_check->get_result()->num_rows === 1) {
                             $role = 'vendor';
-                        } else {
-                            // Default to Food Explorer
-                            $role = 'explorer';
                         }
-                    }
-                    if (isset($role_check)) {
-                        $role_check->close();
+                        $vendor_check->close();
                     }
                 }
             }
             
             $_SESSION['role'] = $role;
-
-            // If in debug mode, don't redirect
+            
+            // DEBUG OUTPUT (if enabled)
             if ($show_debug) {
-                echo "<h2>Login Successful!</h2>";
-                echo "<p>Would redirect to: ";
+                echo "<pre>SESSION DATA:\n";
+                print_r($_SESSION);
+                echo "\nWould redirect to: ";
                 switch ($role) {
-                    case 'admin':
-                        echo "admin_dashboard.php";
-                        break;
-                    case 'vendor':
-                        echo "vendor_dashboard.php";
-                        break;
-                    case 'explorer':
-                    default:
-                        echo "home.php";
-                        break;
+                    case 'admin': echo "admin_dashboard.php"; break;
+                    case 'vendor': echo "vendor_dashboard.php"; break;
+                    default: echo "home.php"; break;
                 }
-                echo "</p>";
-                echo $debug_output;
+                echo "</pre>";
                 exit();
             }
-
-            // Redirect based on role
+            
+            // ACTUAL REDIRECT
             switch ($role) {
                 case 'admin':
                     header("Location: admin_dashboard.php");
-                    break;
+                    exit();
                 case 'vendor':
                     header("Location: vendor_dashboard.php");
-                    break;
-                case 'explorer':
+                    exit();
                 default:
                     header("Location: home.php");
-                    break;
+                    exit();
             }
-            exit();
         } else {
             $error = "Invalid email or password.";
         }
     } else {
         $error = "Invalid email or password.";
     }
-
-    $check_stmt->close();
+    $stmt->close();
 }
 ?>
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -270,18 +127,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             
             <?php if (!empty($error)): ?>
                 <div class="alert alert-error">
-                    <i class="fas fa-exclamation-circle"></i> <?php echo $error; ?>
+                    <i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($error); ?>
                 </div>
             <?php endif; ?>
             
-            <?php if ($show_debug && !empty($debug_output)): ?>
-                <div class="debug-info" style="background: #f8f9fa; padding: 15px; border: 1px solid #ddd; margin-bottom: 20px; font-size: 14px; overflow-x: auto;">
-                    <h3>Debug Information</h3>
-                    <?php echo $debug_output; ?>
-                </div>
-            <?php endif; ?>
-            
-            <form method="POST" action="<?php echo $show_debug ? '?debug=1' : ''; ?>">
+            <form method="POST">
                 <div class="form-group">
                     <label for="email">Email</label>
                     <input type="email" id="email" name="email" placeholder="your@email.com" required>
@@ -299,11 +149,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             
             <div class="footer-links">
                 New here? <a href="register.php">Create an account</a>
-                <?php if (!$show_debug): ?>
-                    | <a href="?debug=1">Debug Mode</a>
-                <?php else: ?>
-                    | <a href="index.php">Normal Mode</a>
-                <?php endif; ?>
+                | <a href="?debug=1">Debug Mode</a>
             </div>
         </div>
     </div>

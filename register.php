@@ -27,10 +27,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $error = "Email already registered.";
         } else {
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-
-            $insert_stmt = $conn->prepare("INSERT INTO User (name, email, password, join_date, points_earned, achievement_lvl) 
-                                           VALUES (?, ?, ?, NOW(), 0, 'Beginner')");
-            $insert_stmt->bind_param("sss", $name, $email, $hashed_password);
+            
+            // Modified to include user_type in the INSERT statement
+            $insert_stmt = $conn->prepare("INSERT INTO User (name, email, password, join_date, points_earned, achievement_lvl, user_type) 
+                                           VALUES (?, ?, ?, NOW(), 0, 'Beginner', ?)");
+            $insert_stmt->bind_param("ssss", $name, $email, $hashed_password, $role);
 
             if ($insert_stmt->execute()) {
                 $user_id = $conn->insert_id;
@@ -43,9 +44,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         die("Prepare failed for Vendor: " . $conn->error);
                     }
                 
-                    // Use correct bind_param
-                    $vendor_stmt->bind_param("is", $user_id, $license_num); // i for integer (user_id), s for string (license_num)
-                    $vendor_stmt->execute();
+                    $vendor_stmt->bind_param("is", $user_id, $license_num);
+                    if (!$vendor_stmt->execute()) {
+                        $error = "Vendor registration failed: " . $conn->error;
+                    }
                     $vendor_stmt->close();
                 } else {
                     $explorer_stmt = $conn->prepare("INSERT INTO Food_Explorer (user_id) VALUES (?)");
@@ -54,14 +56,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         die("Prepare failed for Food_Explorer: " . $conn->error);
                     }
                 
-                    $explorer_stmt->bind_param("i", $user_id); // i for integer (user_id)
-                    $explorer_stmt->execute();
+                    $explorer_stmt->bind_param("i", $user_id);
+                    if (!$explorer_stmt->execute()) {
+                        $error = "Explorer registration failed: " . $conn->error;
+                    }
                     $explorer_stmt->close();
                 }
 
-                $success = "Registration successful! You can now login.";
+                // Only show success if no errors occurred
+                if (empty($error)) {
+                    $success = "Registration successful! You can now login.";
+                }
             } else {
-                $error = "Registration failed. Please try again.";
+                $error = "Registration failed. Please try again. Error: " . $conn->error;
             }
 
             $insert_stmt->close();
