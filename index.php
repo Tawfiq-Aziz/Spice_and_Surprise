@@ -66,82 +66,109 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
     <title>Login | Spice & Surprise</title>
     <style>
-        body {
-            background: #fefefe;
-            font-family: 'Poppins', sans-serif;
-            margin: 0;
-            padding: 0;
-        }
-        .auth-container {
-            display: flex;
-            height: 100vh;
-            justify-content: center;
-            align-items: center;
-            background: linear-gradient(to right, #ffecd2 0%, #fcb69f 100%);
-        }
-        .auth-form {
-            background: white;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.1);
-            width: 350px;
-            text-align: center;
-        }
-        .auth-form h1 {
-            margin-bottom: 10px;
-            color: #ff6b6b;
-        }
-        .subtitle {
-            font-size: 14px;
-            color: #555;
-            margin-bottom: 30px;
-        }
-        .form-group {
-            text-align: left;
-            margin-bottom: 20px;
-        }
-        .form-group label {
-            font-size: 14px;
-            color: #333;
-        }
-        .form-group input {
-            width: 100%;
-            padding: 10px;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-            margin-top: 5px;
-        }
-        .btn {
-            width: 100%;
-            padding: 10px;
-            background-color: #ff6b6b;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.3s ease;
-        }
-        .btn:hover {
-            background-color: #e55a5a;
-        }
-        .footer-links {
-            margin-top: 20px;
-            font-size: 14px;
-        }
-        .footer-links a {
-            color: #ff6b6b;
-            text-decoration: none;
-        }
-        .alert-error {
-            background-color: #ffe0e0;
-            color: #a33;
-            padding: 10px;
-            border: 1px solid #ff6b6b;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-    </style>
+    body {
+        font-family: 'Poppins', sans-serif;
+        margin: 0;
+        padding: 0;
+        background: url('https://images.unsplash.com/photo-1615234590668-43416e63bf2c?q=80&w=2080&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D') no-repeat center center fixed;
+        background-size: cover;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .auth-container {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 15px;
+        padding: 40px;
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        text-align: center;
+        width: 100%;
+        max-width: 400px;
+        color: #ffffff;
+    }
+
+    .logo-title {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        gap: 10px;
+        margin-bottom: 10px;
+        color: #ffaaaa;
+    }
+
+    .logo-icon {
+        width: 30px;
+        height: 30px;
+    }
+
+    .subtitle {
+        font-size: 14px;
+        color:rgb(50, 148, 194);
+        margin-bottom: 30px;
+    }
+
+    .form-group {
+        text-align: left;
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        font-size: 14px;
+        color: #f5f5f5;
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+        margin-top: 5px;
+        outline: none;
+        background-color: rgba(255, 255, 255, 0.8);
+    }
+
+    .btn {
+        width: 100%;
+        padding: 12px;
+        background-color: #ff6b6b;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background 0.3s ease;
+    }
+
+    .btn:hover {
+        background-color: #ff4c4c;
+    }
+
+    .footer-links {
+        margin-top: 20px;
+        font-size: 14px;
+        color: #fff;
+    }
+
+    .footer-links a {
+        color: #ffdada;
+        text-decoration: none;
+    }
+
+    .alert-error {
+        background-color: rgba(255, 0, 0, 0.2);
+        color: #ffbaba;
+        padding: 10px;
+        border: 1px solid #ff6b6b;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+</style>
+
 </head>
 <body>
     <div class="auth-container">
