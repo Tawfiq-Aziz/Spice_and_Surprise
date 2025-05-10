@@ -37,7 +37,6 @@ if (!isset($_SESSION['user_id'])) {
     <div class="card challenge-type-card">
       <h3>🎡 Spin the Wheel</h3>
       <p>Get a random food challenge from Dhaka streets.</p>
-      <a href="spin_wheel.php" class="btn">Start</a>
     </div>
     
     <div class="card challenge-type-card">

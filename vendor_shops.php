@@ -64,7 +64,6 @@ if (!$result) {
         </a>
         <div class="nav-links">
             <a href="challenge.php" class="nav-link"><i class="fas fa-fire"></i> Challenges</a>
-            <a href="discover.php" class="nav-link"><i class="fas fa-compass"></i> Discover</a>
             <a href="vendor_shops.php" class="nav-link"><i class="fas fa-store"></i> Vendor Shops</a>
             <a href="profile.php" class="nav-link"><i class="fas fa-user"></i> Profile</a>
             <a href="logout.php" class="nav-link"><i class="fas fa-sign-out-alt"></i></a>
