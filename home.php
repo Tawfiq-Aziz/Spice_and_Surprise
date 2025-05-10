@@ -54,19 +54,20 @@ $progress = min($user['points_earned'] / 1000 * 100, 100); // Assuming 1000 poin
 </head>
 <body>
     <!-- Navigation Bar -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <a href="home.php" class="nav-logo">
-                <i class="fas fa-pepper-hot"></i> Spice & Surprise
-            </a>
-            <div class="nav-links">
+<nav class="navbar">
+    <div class="nav-container">
+        <a href="home.php" class="nav-logo">
+            <i class="fas fa-pepper-hot"></i> Spice & Surprise
+        </a>
+        <div class="nav-links">
             <a href="challenge.php" class="nav-link"><i class="fas fa-fire"></i> Challenges</a>
-                <a href="discover.php" class="nav-link"><i class="fas fa-compass"></i> Discover</a>
-                <a href="profile.php" class="nav-link"><i class="fas fa-user"></i> Profile</a>
-                <a href="logout.php" class="nav-link"><i class="fas fa-sign-out-alt"></i></a>
-            </div>
+            <a href="vendor_shops.php" class="nav-link"><i class="fas fa-store"></i> Vendor Shops</a>
+            <a href="profile.php" class="nav-link"><i class="fas fa-user"></i> Profile</a>
+            <a href="logout.php" class="nav-link"><i class="fas fa-sign-out-alt"></i></a>
         </div>
-    </nav>
+    </div>
+</nav>
+
 
     <!-- Main Content -->
     <div class="container">

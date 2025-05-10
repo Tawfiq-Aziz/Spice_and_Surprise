@@ -2,154 +2,171 @@
 session_start();
 require 'db.php';
 
-// Initialize all variables
 $error = '';
-$show_debug = isset($_GET['debug']) && $_GET['debug'] == 1;
-$debug_output = '';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $email = sanitize_input($_POST["email"], $conn);
+    $email = mysqli_real_escape_string($conn, $_POST["email"]);
     $password = $_POST["password"];
-    
-    // First check if user exists
+
     $stmt = $conn->prepare("SELECT * FROM `user` WHERE email = ?");
-    if ($stmt === false) {
-        die('MySQL prepare error: ' . $conn->error);
-    }
-    
     $stmt->bind_param("s", $email);
     $stmt->execute();
     $result = $stmt->get_result();
-    
+
     if ($result->num_rows === 1) {
         $user = $result->fetch_assoc();
-        
-        // Verify password
+
         if (password_verify($password, $user['password'])) {
-            // Get user ID - checking multiple possible column names
             $user_id = $user['user_id'] ?? $user['id'] ?? $user['u_id'] ?? null;
-            
+
             if (!$user_id) {
                 die("Could not determine user ID");
             }
-            
-            // Set session variables
-            $_SESSION = [
-                'user_id' => $user_id,
-                'name' => $user['name'],
-                'email' => $user['email'],
-                'points' => $user['points_earned'] ?? 0
-            ];
-            
-            // DETERMINE USER ROLE
-            $role = 'food_explorer'; // Default role
-            
-            // Check if user_type column exists
-            if (isset($user['user_type'])) {
-                $role = strtolower($user['user_type']);
-            } 
-            // If no user_type column, check role tables
-            else {
-                // Check if admin
-                $admin_check = $conn->prepare("SELECT 1 FROM `Admin` WHERE `user_id` = ?");
-                if ($admin_check && $admin_check->bind_param("i", $user_id) && $admin_check->execute()) {
-                    if ($admin_check->get_result()->num_rows === 1) {
-                        $role = 'admin';
-                    }
-                    $admin_check->close();
-                }
-                
-                // If not admin, check if vendor
-                if ($role !== 'admin') {
-                    $vendor_check = $conn->prepare("SELECT 1 FROM `Vendor` WHERE `user_id` = ?");
-                    if ($vendor_check && $vendor_check->bind_param("i", $user_id) && $vendor_check->execute()) {
-                        if ($vendor_check->get_result()->num_rows === 1) {
-                            $role = 'vendor';
-                        }
-                        $vendor_check->close();
-                    }
-                }
+
+            // Default role
+            $role = 'food_explorer';
+
+            // Check if vendor
+            $vendor_check = $conn->prepare("SELECT vendor_id FROM Vendor WHERE user_id = ?");
+            $vendor_check->bind_param("i", $user_id);
+            $vendor_check->execute();
+            $vendor_result = $vendor_check->get_result();
+
+            if ($vendor_result->num_rows === 1) {
+                $role = 'vendor';
+                $vendor_data = $vendor_result->fetch_assoc();
+                $_SESSION['vendor_id'] = $vendor_data['vendor_id'];
             }
-            
+
+            $_SESSION['user_id'] = $user_id;
+            $_SESSION['name'] = $user['name'];
+            $_SESSION['email'] = $user['email'];
+            $_SESSION['points'] = $user['points_earned'] ?? 0;
             $_SESSION['role'] = $role;
-            
-            // DEBUG OUTPUT (if enabled)
-            if ($show_debug) {
-                echo "<pre>SESSION DATA:\n";
-                print_r($_SESSION);
-                echo "\nWould redirect to: ";
-                switch ($role) {
-                    case 'admin': echo "admin_dashboard.php"; break;
-                    case 'vendor': echo "vendor_dashboard.php"; break;
-                    default: echo "home.php"; break;
-                }
-                echo "</pre>";
-                exit();
+
+            if ($role === 'vendor') {
+                header("Location: vendor_dashboard.php");
+            } else {
+                header("Location: home.php");
             }
-            
-            // ACTUAL REDIRECT
-            switch ($role) {
-                case 'admin':
-                    header("Location: admin_dashboard.php");
-                    exit();
-                case 'vendor':
-                    header("Location: vendor_dashboard.php");
-                    exit();
-                default:
-                    header("Location: home.php");
-                    exit();
-            }
+            exit();
         } else {
             $error = "Invalid email or password.";
         }
     } else {
         $error = "Invalid email or password.";
     }
+
     $stmt->close();
 }
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Spice & Surprise</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
+    <title>Login | Spice & Surprise</title>
+    <style>
+        body {
+            background: #fefefe;
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .auth-container {
+            display: flex;
+            height: 100vh;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(to right, #ffecd2 0%, #fcb69f 100%);
+        }
+        .auth-form {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            width: 350px;
+            text-align: center;
+        }
+        .auth-form h1 {
+            margin-bottom: 10px;
+            color: #ff6b6b;
+        }
+        .subtitle {
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            text-align: left;
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            font-size: 14px;
+            color: #333;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            margin-top: 5px;
+        }
+        .btn {
+            width: 100%;
+            padding: 10px;
+            background-color: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s ease;
+        }
+        .btn:hover {
+            background-color: #e55a5a;
+        }
+        .footer-links {
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        .footer-links a {
+            color: #ff6b6b;
+            text-decoration: none;
+        }
+        .alert-error {
+            background-color: #ffe0e0;
+            color: #a33;
+            padding: 10px;
+            border: 1px solid #ff6b6b;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+    </style>
 </head>
 <body>
     <div class="auth-container">
         <div class="auth-form">
-            <h1><i class="fas fa-pepper-hot"></i> Spice & Surprise</h1>
+            <h1>Spice & Surprise</h1>
             <p class="subtitle">Discover bold flavors and exciting challenges</p>
-            
+
             <?php if (!empty($error)): ?>
-                <div class="alert alert-error">
-                    <i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($error); ?>
-                </div>
+                <div class="alert-error"><?= htmlspecialchars($error) ?></div>
             <?php endif; ?>
-            
+
             <form method="POST">
                 <div class="form-group">
-                    <label for="email">Email</label>
-                    <input type="email" id="email" name="email" placeholder="your@email.com" required>
+                    <label>Email</label>
+                    <input type="email" name="email" required placeholder="you@example.com">
                 </div>
-                
                 <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" placeholder="••••••••" required>
+                    <label>Password</label>
+                    <input type="password" name="password" required placeholder="••••••••">
                 </div>
-                
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-sign-in-alt"></i> Sign In
-                </button>
+                <button type="submit" class="btn">Login</button>
             </form>
-            
+
             <div class="footer-links">
                 New here? <a href="register.php">Create an account</a>
-                | <a href="?debug=1">Debug Mode</a>
             </div>
         </div>
     </div>
