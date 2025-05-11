@@ -2,15 +2,8 @@
 
 A modern food discovery app that helps users explore local food vendors, read reviews, and discover new culinary experiences.
 
-<<<<<<< HEAD
-## Key Features
 
-- **Vendor Shops**: Browse and search for local food vendors.
-- **Reviews**: Read and write reviews for vendors.
-- **User Authentication**: Register and log in to access personalized features.
-- **Responsive Design**: Enjoy a seamless experience on any device.
-=======
->>>>>>> 49b3eaf79adcf11ab35627a1863d3f5601ae8d9c
+
 
 ## Setup Instructions
 
@@ -35,17 +28,14 @@ A modern food discovery app that helps users explore local food vendors, read re
 
 ## Technologies Used
 
-<<<<<<< HEAD
 - **Frontend**: HTML, CSS, JavaScript
 - **Backend**: PHP
 - **Database**: MySQL
 
-## License
 
-This project is licensed under the MIT License. See the LICENSE file for details. 
 =======
 - **Frontend**: HTML, CSS
 - **Backend**: PHP
 - **Database**: MySQL
 
->>>>>>> 49b3eaf79adcf11ab35627a1863d3f5601ae8d9c
+
