@@ -39,8 +39,65 @@ while ($row = $result->fetch_assoc()) {
 $stmt->close();
 
 // Calculate progress percentage (example logic)
-$progress = min($user['points_earned'] / 1000 * 100, 100); // Assuming 1000 points to next level
+$progress = min($user['points_earned'] / 1000 * 100, 100);
+ // Assuming 1000 points to next level
 
+// Fetch latest reviews with error handling
+$reviews_query = "SELECT r.*, u.name AS user_name, s.shop_name, r.date
+                 FROM review r
+                 JOIN user u ON r.user_id = u.user_id
+                 JOIN vendor v ON r.vendor_id = v.vendor_id
+                 JOIN shop s ON v.vendor_id = s.vendor_id
+                 ORDER BY r.date DESC
+                 LIMIT 5";
+
+$reviews = $conn->query($reviews_query);
+if (!$reviews) {
+    die("Error fetching reviews: " . $conn->error);
+}
+
+// ✅ Fetch the latest reviews with proper field mapping
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_review'])) {
+    $user_id = $_SESSION['user_id'];
+    $vendor_identifier = $_POST['vendor_identifier'];
+    $hygiene_rating = $_POST['hygiene_rating'];
+    $taste_rating = $_POST['taste_rating'];
+    $spice_rating = $_POST['spice_rating'];
+    $comments = $_POST['comments'];
+
+    // First get the vendor_id from the shop table
+    $vendor_stmt = $conn->prepare("SELECT vendor_id FROM shop WHERE shop_name = ? OR license_no = ?");
+    if (!$vendor_stmt) {
+        die("Prepare failed: " . $conn->error);
+    }
+
+    $vendor_stmt->bind_param("ss", $vendor_identifier, $vendor_identifier);
+    $vendor_stmt->execute();
+    $vendor_result = $vendor_stmt->get_result();
+
+    if ($vendor_result->num_rows === 0) {
+        die("Error: Vendor not found!");
+    }
+
+    $vendor_id = $vendor_result->fetch_assoc()['vendor_id'];
+    $vendor_stmt->close();
+
+    // Now insert the review
+    $stmt = $conn->prepare("INSERT INTO review (user_id, vendor_id, hygine_rating, taste_rating, spice_rating, comments, date) VALUES (?, ?, ?, ?, ?, ?, CURDATE())");
+    if (!$stmt) {
+        die("Prepare failed: " . $conn->error);
+    }
+
+    $stmt->bind_param("iiddds", $user_id, $vendor_id, $hygiene_rating, $taste_rating, $spice_rating, $comments);
+
+    if ($stmt->execute()) {
+        echo "<script>alert('Review added successfully!');</script>";
+    } else {
+        echo "Execute failed: " . $stmt->error;
+    }
+
+    $stmt->close();
+}
 ?>
 
 <!DOCTYPE html>
@@ -199,26 +256,7 @@ $progress = min($user['points_earned'] / 1000 * 100, 100); // Assuming 1000 poin
     </div>
 </main>
 
-<!-- Footer -->
-<footer class="footer">
-    <div class="footer-content">
-        <div class="footer-logo"><i class="fas fa-pepper-hot"></i> Spice & Surprise</div>
-        <div class="footer-links">
-            <a href="#">About</a>
-            <a href="#">Contact</a>
-            <a href="#">Privacy</a>
-            <a href="#">Terms</a>
-        </div>
-        <div class="footer-social">
-            <a href="#"><i class="fab fa-instagram"></i></a>
-            <a href="#"><i class="fab fa-twitter"></i></a>
-            <a href="#"><i class="fab fa-facebook"></i></a>
-        </div>
-    </div>
-    <div class="footer-copyright">
-        &copy; <?= date('Y') ?> Spice & Surprise. All rights reserved.
-    </div>
-</footer>
+
 
 <!-- Reviews Section -->
 <section class="reviews-container">
@@ -283,11 +321,11 @@ $progress = min($user['points_earned'] / 1000 * 100, 100); // Assuming 1000 poin
                         <div class="review-date"><?= date('M j, Y', strtotime($row['date'])) ?></div>
                     </div>
                     <div class="review-ratings">
-                        <div class="rating-item"><span class="rating-icon">🌶️</span><span class="rating-value"><?= $row['spice_rating'] ?>/5</span></div>
-                        <div class="rating-item"><span class="rating-icon">🧼</span><span class="rating-value"><?= $row['hygiene_rating'] ?>/5</span></div>
-                        <div class="rating-item"><span class="rating-icon">😋</span><span class="rating-value"><?= $row['taste_rating'] ?>/5</span></div>
+                        <div class="rating-item"><span class="rating-icon">🌶️</span><span class="rating-value"><?= number_format($row['spice_rating'], 1) ?>/5</span></div>
+                        <div class="rating-item"><span class="rating-icon">🧼</span><span class="rating-value"><?= number_format($row['hygine_rating'], 1) ?>/5</span></div>
+                        <div class="rating-item"><span class="rating-icon">😋</span><span class="rating-value"><?= number_format($row['taste_rating'], 1) ?>/5</span></div>
                     </div>
-                    <div class="review-comment"><?= htmlspecialchars($row['comments']) ?></div>
+                    <div class="review-comment"><?= nl2br(htmlspecialchars($row['comments'])) ?></div>
                 </div>
                 <?php endwhile; ?>
             <?php else : ?>
@@ -296,6 +334,25 @@ $progress = min($user['points_earned'] / 1000 * 100, 100); // Assuming 1000 poin
         </div>
     </div>
 </section>
-
+<!-- Footer -->
+<footer class="footer">
+    <div class="footer-content">
+        <div class="footer-logo"><i class="fas fa-pepper-hot"></i> Spice & Surprise</div>
+        <div class="footer-links">
+            <a href="#">About</a>
+            <a href="#">Contact</a>
+            <a href="#">Privacy</a>
+            <a href="#">Terms</a>
+        </div>
+        <div class="footer-social">
+            <a href="#"><i class="fab fa-instagram"></i></a>
+            <a href="#"><i class="fab fa-twitter"></i></a>
+            <a href="#"><i class="fab fa-facebook"></i></a>
+        </div>
+    </div>
+    <div class="footer-copyright">
+        &copy; <?= date('Y') ?> Spice & Surprise. All rights reserved.
+    </div>
+</footer>
 </body>
 </html>
