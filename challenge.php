@@ -72,11 +72,11 @@ if (!$challenges) {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Challenges - Spice & Surprise</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
             --primary-color: #2d3436;
@@ -473,9 +473,9 @@ if (!$challenges) {
             width: 50%;
             height: 50%;
             transform-origin: 100% 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
             font-size: 0.8rem;
             font-weight: 500;
             color: var(--text-color);
@@ -579,7 +579,7 @@ if (!$challenges) {
         .spin-wheel-container {
             display: none;
             text-align: center;
-            padding: 2rem;
+      padding: 2rem;
             background: var(--card-bg);
             border-radius: 15px;
             margin-bottom: 2rem;
@@ -592,26 +592,26 @@ if (!$challenges) {
 
         .wheel-container {
             position: relative;
-            width: 300px;
-            height: 300px;
+      width: 300px;
+      height: 300px;
             margin: 2rem auto;
         }
 
         .wheel {
             width: 100%;
             height: 100%;
-            border-radius: 50%;
-            position: relative;
-            overflow: hidden;
+      border-radius: 50%;
+      position: relative;
+      overflow: hidden;
             border: 8px solid var(--accent-color);
             box-shadow: 0 0 20px rgba(76, 175, 80, 0.3);
             transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
-        }
+    }
 
         .wheel-pointer {
-            position: absolute;
+      position: absolute;
             top: -20px;
-            left: 50%;
+      left: 50%;
             transform: translateX(-50%);
             width: 40px;
             height: 40px;
@@ -622,13 +622,13 @@ if (!$challenges) {
 
         .spin-button {
             background: var(--gradient-2);
-            color: white;
-            border: none;
+      color: white;
+      border: none;
             padding: 1rem 2rem;
             border-radius: 8px;
             font-size: 1.1rem;
             font-weight: 500;
-            cursor: pointer;
+      cursor: pointer;
             transition: all 0.3s ease;
             margin-top: 1rem;
             display: inline-flex;
@@ -645,8 +645,8 @@ if (!$challenges) {
             background: #666;
             cursor: not-allowed;
             transform: none;
-        }
-    </style>
+    }
+  </style>
 </head>
 <body>
     <!-- Add Go Back Bar -->
@@ -702,7 +702,7 @@ if (!$challenges) {
             <h2><i class="fas fa-sync"></i> Spin the Wheel</h2>
             <p>Test your luck and get exciting food challenges!</p>
             
-            <div class="wheel-container">
+  <div class="wheel-container">
                 <div class="wheel-pointer"></div>
                 <div class="wheel" id="wheel">
                     <!-- Wheel sections will be added dynamically -->
@@ -785,9 +785,9 @@ if (!$challenges) {
                 </div>
             <?php endif; ?>
         </div>
-    </div>
+  </div>
 
-    <script>
+  <script>
         document.querySelectorAll('.participate-btn').forEach(button => {
             button.addEventListener('click', function() {
                 if (!this.disabled) {
@@ -825,7 +825,7 @@ if (!$challenges) {
 
         // Spin Wheel Functionality
         document.addEventListener('DOMContentLoaded', function() {
-            const wheel = document.getElementById('wheel');
+    const wheel = document.getElementById('wheel');
             const spinButton = document.getElementById('spinButton');
             const wheelResult = document.getElementById('wheelResult');
             const taskText = document.getElementById('taskText');
@@ -862,7 +862,7 @@ if (!$challenges) {
                     wheel.style.transform = `rotate(${finalRotation}deg)`;
 
                     // Show result after spin
-                    setTimeout(() => {
+      setTimeout(() => {
                         isSpinning = false;
                         spinButton.disabled = false;
                         wheelResult.classList.add('active');
@@ -877,7 +877,7 @@ if (!$challenges) {
                 spinButton.disabled = true;
             }
         });
-    </script>
+  </script>
 </body>
 </html>
 
