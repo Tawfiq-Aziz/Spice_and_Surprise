@@ -1,36 +1,19 @@
 <?php
 require 'db.php';
 
-$shop_name = $_GET['shop_name'] ?? '';
-$location = $_GET['location'] ?? '';
-$license_no = $_GET['license_no'] ?? '';
+$q = trim($_GET['q'] ?? '');
 
-$query = "SELECT * FROM shop WHERE 1=1";
-$params = [];
-$types = "";
-
-if (!empty($shop_name)) {
-    $query .= " AND shop_name LIKE ?";
-    $params[] = "%$shop_name%";
-    $types .= "s";
+if ($q !== '') {
+    $query = "SELECT * FROM shop WHERE shop_name LIKE ? OR location LIKE ? OR license_no LIKE ?";
+    $param = "%$q%";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("sss", $param, $param, $param);
+    $stmt->execute();
+    $results = $stmt->get_result();
+} else {
+    // No query provided, show no results
+    $results = false;
 }
-if (!empty($location)) {
-    $query .= " AND location LIKE ?";
-    $params[] = "%$location%";
-    $types .= "s";
-}
-if (!empty($license_no)) {
-    $query .= " AND license_no LIKE ?";
-    $params[] = "%$license_no%";
-    $types .= "s";
-}
-
-$stmt = $conn->prepare($query);
-if ($params) {
-    $stmt->bind_param($types, ...$params);
-}
-$stmt->execute();
-$results = $stmt->get_result();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -42,11 +25,10 @@ $results = $stmt->get_result();
 </head>
 <body>
 
-
     <div class="container">
         <h2 style="text-align: center;"><i class="fas fa-store"></i> Search Results</h2>
         <div class="grid grid-3">
-            <?php if ($results->num_rows > 0): ?>
+            <?php if ($results && $results->num_rows > 0): ?>
                 <?php while ($shop = $results->fetch_assoc()): ?>
                     <div class="card shop-card">
                         <h3><?php echo htmlspecialchars($shop['shop_name']); ?></h3>
@@ -58,8 +40,10 @@ $results = $stmt->get_result();
                         <?php endif; ?>
                     </div>
                 <?php endwhile; ?>
-            <?php else: ?>
+            <?php elseif ($results): ?>
                 <p style="text-align: center;">No vendors found matching your criteria.</p>
+            <?php else: ?>
+                <p style="text-align: center;">Please enter a search term above.</p>
             <?php endif; ?>
         </div>
     </div>

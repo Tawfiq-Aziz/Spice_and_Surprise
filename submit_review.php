@@ -7,7 +7,27 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'food_explorer') {
     exit();
 }
 
-if (isset($_POST['submit_review'])) {
+// Pre-fill shop name/license if shop_id is provided
+$prefill_shop = '';
+$readonly = false;
+if (isset($_GET['shop_id'])) {
+    $shop_id = intval($_GET['shop_id']);
+    $shop_stmt = $conn->prepare("SELECT shop_name, license_no FROM shop WHERE id = ?");
+    $shop_stmt->bind_param("i", $shop_id);
+    $shop_stmt->execute();
+    $shop_result = $shop_stmt->get_result();
+    if ($shop_result->num_rows > 0) {
+        $shop = $shop_result->fetch_assoc();
+        $prefill_shop = $shop['shop_name'] . ' / ' . $shop['license_no'];
+        $readonly = true;
+    }
+    $shop_stmt->close();
+}
+
+if (isset(
+		$_POST['submit_review']) ||
+		(isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+) {
     $vendor_identifier = isset($_POST['vendor_identifier']) ? trim($_POST['vendor_identifier']) : null;
     $spice_rating = $_POST['spice_rating'] ?? null;
     $hygine_rating = $_POST['hygine_rating'] ?? null;
@@ -16,16 +36,28 @@ if (isset($_POST['submit_review'])) {
     $user_id = $_SESSION['user_id'];
 
     if (!$vendor_identifier || $spice_rating === null || $hygine_rating === null || $taste_rating === null) {
-        $_SESSION['review_error'] = "❌ All fields are required.";
-        header("Location: submit_review.php");
-        exit();
+        $msg = "❌ All fields are required.";
+        if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+            echo json_encode(['success' => false, 'message' => $msg]);
+            exit();
+        } else {
+            $_SESSION['review_error'] = $msg;
+            header("Location: submit_review.php" . (isset($_GET['shop_id']) ? '?shop_id=' . intval($_GET['shop_id']) : ''));
+            exit();
+        }
     }
 
     $vendor_stmt = $conn->prepare("SELECT vendor_id FROM shop WHERE shop_name = ? OR license_no = ?");
     if (!$vendor_stmt) {
-        $_SESSION['review_error'] = "❌ Vendor query failed.";
-        header("Location: submit_review.php");
-        exit();
+        $msg = "❌ Vendor query failed.";
+        if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+            echo json_encode(['success' => false, 'message' => $msg]);
+            exit();
+        } else {
+            $_SESSION['review_error'] = $msg;
+            header("Location: submit_review.php" . (isset($_GET['shop_id']) ? '?shop_id=' . intval($_GET['shop_id']) : ''));
+            exit();
+        }
     }
 
     $vendor_stmt->bind_param("ss", $vendor_identifier, $vendor_identifier);
@@ -38,23 +70,43 @@ if (isset($_POST['submit_review'])) {
         $stmt = $conn->prepare("INSERT INTO review (user_id, vendor_id, hygine_rating, comments, date, spice_rating, taste_rating)
                                 VALUES (?, ?, ?, ?, CURDATE(), ?, ?)");
         if (!$stmt) {
-            $_SESSION['review_error'] = "❌ Review insert failed.";
-            header("Location: submit_review.php");
-            exit();
+            $msg = "❌ Review insert failed.";
+            if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+                echo json_encode(['success' => false, 'message' => $msg]);
+                exit();
+            } else {
+                $_SESSION['review_error'] = $msg;
+                header("Location: submit_review.php" . (isset($_GET['shop_id']) ? '?shop_id=' . intval($_GET['shop_id']) : ''));
+                exit();
+            }
         }
 
         $stmt->bind_param("iissdd", $user_id, $vendor_id, $hygine_rating, $comments, $spice_rating, $taste_rating);
         $stmt->execute();
         $stmt->close();
 
-        $_SESSION['review_success'] = "✅ Review submitted successfully!";
+        $msg = "✅ Review submitted successfully!";
+        if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+            echo json_encode(['success' => true, 'message' => $msg]);
+            exit();
+        } else {
+            $_SESSION['review_success'] = $msg;
+        }
     } else {
-        $_SESSION['review_error'] = "❌ Vendor not found.";
+        $msg = "❌ Vendor not found.";
+        if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+            echo json_encode(['success' => false, 'message' => $msg]);
+            exit();
+        } else {
+            $_SESSION['review_error'] = $msg;
+        }
     }
 
     $vendor_stmt->close();
-    header("Location: submit_review.php");
-    exit();
+    if (!(isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')) {
+        header("Location: submit_review.php" . (isset($_GET['shop_id']) ? '?shop_id=' . intval($_GET['shop_id']) : ''));
+        exit();
+    }
 }
 ?>
 
@@ -73,9 +125,9 @@ if (isset($_SESSION['review_error'])) {
 }
 ?>
 
-<form method="post" action="submit_review.php">
+<form method="post" action="submit_review.php<?php if (isset($_GET['shop_id'])) echo '?shop_id=' . intval($_GET['shop_id']); ?>">
     <label>Shop Name or License No:</label><br>
-    <input type="text" name="vendor_identifier" required><br><br>
+    <input type="text" name="vendor_identifier" value="<?= htmlspecialchars($prefill_shop) ?>" <?php if ($readonly) echo 'readonly'; ?> required><br><br>
 
     <label>Spice Rating (0–5):</label><br>
     <input type="number" name="spice_rating" step="0.1" min="0" max="5" required><br><br>

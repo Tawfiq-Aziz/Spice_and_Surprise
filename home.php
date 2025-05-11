@@ -762,6 +762,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_review'])) {
                 <a href="profile.php" class="nav-link"><i class="fas fa-user"></i> Profile</a>
                 <a href="logout.php" class="nav-link"><i class="fas fa-sign-out-alt"></i></a>
             </div>
+            <form class="search-form" action="search.php" method="get" style="display: flex; align-items: center; margin-left: 1.5rem;">
+                <input type="text" name="q" placeholder="Search..." required style="padding: 10px 15px; border-radius: 8px; border: 1px solid #ccc; font-family: 'Poppins', sans-serif; margin-right: 8px;">
+                <button type="submit" style="background-color: #4CAF50; color: #fff; border: none; border-radius: 8px; padding: 10px 16px; cursor: pointer;"><i class="fas fa-search"></i></button>
+            </form>
         </div>
     </nav>
 
@@ -864,6 +868,61 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_review'])) {
             </div>
         </section>
 
+        <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'food_explorer'): ?>
+        <section class="reviews-section" style="margin-bottom: 40px;">
+            <h2 class="section-title">Write a Review</h2>
+            <form method="POST" class="review-form" style="max-width: 600px; margin: 0 auto; background: rgba(44, 62, 80, 0.95); border-radius: 16px; box-shadow: 0 4px 24px rgba(76,175,80,0.10); padding: 2rem;">
+                <div class="form-group">
+                    <label for="vendor_identifier" style="color:#fff; font-weight:600;">Shop Name or License No:</label>
+                    <input type="text" id="vendor_identifier" name="vendor_identifier" required style="background:rgba(255,255,255,0.08); color:#fff; border:1.5px solid #4CAF50;">
+                </div>
+                <div class="form-group">
+                    <label for="spice_rating" style="color:#fff; font-weight:600;">Spice Rating</label>
+                    <input type="range" id="spice_rating" name="spice_rating" min="0" max="5" step="0.1" value="2.5" oninput="document.getElementById('spice_val').innerText = this.value" style="width:100%;">
+                    <div class="rating-labels"><span>0</span><span id="spice_val">2.5</span><span>5</span></div>
+                </div>
+                <div class="form-group">
+                    <label for="hygiene_rating" style="color:#fff; font-weight:600;">Hygiene Rating</label>
+                    <input type="range" id="hygiene_rating" name="hygiene_rating" min="0" max="5" step="0.1" value="2.5" oninput="document.getElementById('hygiene_val').innerText = this.value" style="width:100%;">
+                    <div class="rating-labels"><span>0</span><span id="hygiene_val">2.5</span><span>5</span></div>
+                </div>
+                <div class="form-group">
+                    <label for="taste_rating" style="color:#fff; font-weight:600;">Taste Rating</label>
+                    <input type="range" id="taste_rating" name="taste_rating" min="0" max="5" step="0.1" value="2.5" oninput="document.getElementById('taste_val').innerText = this.value" style="width:100%;">
+                    <div class="rating-labels"><span>0</span><span id="taste_val">2.5</span><span>5</span></div>
+                </div>
+                <div class="form-group">
+                    <label for="comments" style="color:#fff; font-weight:600;">Comments</label>
+                    <textarea id="comments" name="comments" rows="4" style="resize:vertical; background:rgba(255,255,255,0.08); color:#fff; border:1.5px solid #4CAF50;"></textarea>
+                </div>
+                <button type="submit" name="submit_review" class="submit-btn" style="background:linear-gradient(90deg,#4CAF50,#388E3C); color:#fff; border:none; border-radius:10px; font-weight:700; font-size:1.1rem; padding:0.9rem 2.2rem; box-shadow:0 4px 16px rgba(76,175,80,0.18); display:flex; align-items:center; gap:0.7rem; margin-top:1rem; transition:background 0.3s,transform 0.2s;"><i class="fas fa-paper-plane"></i> Submit Review</button>
+            </form>
+        </section>
+        <script>
+        // Responsive rating value display
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('spice_rating').addEventListener('input', function() {
+                document.getElementById('spice_val').innerText = this.value;
+            });
+            document.getElementById('hygiene_rating').addEventListener('input', function() {
+                document.getElementById('hygiene_val').innerText = this.value;
+            });
+            document.getElementById('taste_rating').addEventListener('input', function() {
+                document.getElementById('taste_val').innerText = this.value;
+            });
+        });
+        </script>
+        <style>
+        @media (max-width: 700px) {
+            .review-form { padding: 1rem !important; }
+        }
+        </style>
+        <?php elseif (isset($_SESSION['user_id'])): ?>
+        <section class="reviews-section" style="margin-bottom: 40px;">
+            <h2 class="section-title">Write a Review</h2>
+            <div class="access-message">Only <b>Food Explorers</b> can write reviews. Switch to a Food Explorer account to share your experience!</div>
+        </section>
+        <?php endif; ?>
         <!-- Reviews Section -->
         <section class="reviews-section">
             <h2 class="section-title">Latest Reviews</h2>

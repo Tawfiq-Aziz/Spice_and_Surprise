@@ -413,6 +413,11 @@ if (!$shops) {
             font-weight: 600;
             font-size: 1.2rem;
         }
+
+        #reviewModal { display:none; align-items:center; justify-content:center; }
+        @media (max-width: 600px) {
+            #reviewModal > div { padding: 1rem !important; }
+        }
     </style>
 </head>
 <body>
@@ -498,12 +503,47 @@ if (!$shops) {
                             <h4><i class="fas fa-utensils"></i> Menu Preview</h4>
                             <p><?= nl2br(htmlspecialchars(substr($shop['menu'], 0, 150))) ?>...</p>
                         </div>
-                        <a href="submit_review.php?shop_id=<?= $shop['id'] ?>" class="review-btn">
+                        <a href="#" class="review-btn" onclick="openReviewModal('<?= htmlspecialchars($shop['shop_name']) ?>', '<?= htmlspecialchars($shop['license_no']) ?>', <?= $shop['id'] ?>); return false;">
                             <i class="fas fa-star"></i> Write a Review
                         </a>
                     </div>
                 </div>
             <?php endwhile; ?>
+        </div>
+    </div>
+
+    <!-- Review Modal -->
+    <div id="reviewModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(30,30,30,0.65); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:rgba(44,62,80,0.98); border-radius:18px; max-width:420px; width:95%; margin:auto; box-shadow:0 8px 32px rgba(76,175,80,0.18); padding:2.2rem 1.5rem; position:relative;">
+            <button onclick="closeReviewModal()" style="position:absolute; top:18px; right:18px; background:none; border:none; color:#fff; font-size:1.5rem; cursor:pointer;"><i class='fas fa-times'></i></button>
+            <h2 style="color:#4CAF50; text-align:center; margin-bottom:1.2rem;">Write a Review</h2>
+            <form id="modalReviewForm" method="POST" action="submit_review.php" style="display:flex; flex-direction:column; gap:1.1rem;">
+                <input type="hidden" name="shop_id" id="modal_shop_id">
+                <div class="form-group">
+                    <label style="color:#fff; font-weight:600;">Shop Name or License No:</label>
+                    <input type="text" id="modal_vendor_identifier" name="vendor_identifier" readonly style="background:rgba(255,255,255,0.08); color:#fff; border:1.5px solid #4CAF50;">
+                </div>
+                <div class="form-group">
+                    <label style="color:#fff; font-weight:600;">Spice Rating</label>
+                    <input type="range" id="modal_spice_rating" name="spice_rating" min="0" max="5" step="0.1" value="2.5" oninput="document.getElementById('modal_spice_val').innerText = this.value" style="width:100%;">
+                    <div class="rating-labels"><span>0</span><span id="modal_spice_val">2.5</span><span>5</span></div>
+                </div>
+                <div class="form-group">
+                    <label style="color:#fff; font-weight:600;">Hygiene Rating</label>
+                    <input type="range" id="modal_hygiene_rating" name="hygine_rating" min="0" max="5" step="0.1" value="2.5" oninput="document.getElementById('modal_hygiene_val').innerText = this.value" style="width:100%;">
+                    <div class="rating-labels"><span>0</span><span id="modal_hygiene_val">2.5</span><span>5</span></div>
+                </div>
+                <div class="form-group">
+                    <label style="color:#fff; font-weight:600;">Taste Rating</label>
+                    <input type="range" id="modal_taste_rating" name="taste_rating" min="0" max="5" step="0.1" value="2.5" oninput="document.getElementById('modal_taste_val').innerText = this.value" style="width:100%;">
+                    <div class="rating-labels"><span>0</span><span id="modal_taste_val">2.5</span><span>5</span></div>
+                </div>
+                <div class="form-group">
+                    <label style="color:#fff; font-weight:600;">Comments</label>
+                    <textarea id="modal_comments" name="comments" rows="3" style="resize:vertical; background:rgba(255,255,255,0.08); color:#fff; border:1.5px solid #4CAF50;"></textarea>
+                </div>
+                <button type="submit" class="submit-btn" style="background:linear-gradient(90deg,#4CAF50,#388E3C); color:#fff; border:none; border-radius:10px; font-weight:700; font-size:1.1rem; padding:0.8rem 2rem; box-shadow:0 4px 16px rgba(76,175,80,0.18); display:flex; align-items:center; gap:0.7rem; margin-top:0.5rem; transition:background 0.3s,transform 0.2s;"><i class="fas fa-paper-plane"></i> Submit Review</button>
+            </form>
         </div>
     </div>
 
@@ -582,6 +622,73 @@ if (!$shops) {
                 closeRedeemModal();
             }
         }
+
+        function openReviewModal(shopName, licenseNo, shopId) {
+            document.getElementById('reviewModal').style.display = 'flex';
+            document.getElementById('modal_vendor_identifier').value = shopName;
+            document.getElementById('modal_shop_id').value = shopId;
+            document.getElementById('modal_spice_rating').value = 2.5;
+            document.getElementById('modal_spice_val').innerText = 2.5;
+            document.getElementById('modal_hygiene_rating').value = 2.5;
+            document.getElementById('modal_hygiene_val').innerText = 2.5;
+            document.getElementById('modal_taste_rating').value = 2.5;
+            document.getElementById('modal_taste_val').innerText = 2.5;
+            document.getElementById('modal_comments').value = '';
+        }
+
+        function closeReviewModal() {
+            document.getElementById('reviewModal').style.display = 'none';
+        }
+
+        // Responsive rating value display for modal
+        ['modal_spice_rating','modal_hygiene_rating','modal_taste_rating'].forEach(function(id) {
+            document.getElementById(id).addEventListener('input', function() {
+                document.getElementById(id.replace('rating','val')).innerText = this.value;
+            });
+        });
+
+        // AJAX review submission for modal
+        const modalReviewForm = document.getElementById('modalReviewForm');
+        modalReviewForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(modalReviewForm);
+            fetch('submit_review.php', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                let msgBox = document.getElementById('modalReviewMsg');
+                if (!msgBox) {
+                    msgBox = document.createElement('div');
+                    msgBox.id = 'modalReviewMsg';
+                    msgBox.style.margin = '0.5rem 0 0.5rem 0';
+                    msgBox.style.textAlign = 'center';
+                    modalReviewForm.insertBefore(msgBox, modalReviewForm.firstChild);
+                }
+                msgBox.innerHTML = data.message;
+                msgBox.style.color = data.success ? '#4CAF50' : '#ff6b6b';
+                if (data.success) {
+                    setTimeout(() => {
+                        closeReviewModal();
+                        msgBox.innerHTML = '';
+                    }, 1200);
+                }
+            })
+            .catch(() => {
+                let msgBox = document.getElementById('modalReviewMsg');
+                if (!msgBox) {
+                    msgBox = document.createElement('div');
+                    msgBox.id = 'modalReviewMsg';
+                    msgBox.style.margin = '0.5rem 0 0.5rem 0';
+                    msgBox.style.textAlign = 'center';
+                    modalReviewForm.insertBefore(msgBox, modalReviewForm.firstChild);
+                }
+                msgBox.innerHTML = '❌ An error occurred. Please try again.';
+                msgBox.style.color = '#ff6b6b';
+            });
+        });
     </script>
 </body>
 </html>
