@@ -49,6 +49,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         $error = "Vendor registration failed: " . $conn->error;
                     }
                     $vendor_stmt->close();
+                } elseif ($role === "admin") {
+                    // Insert into admin table
+                    $admin_stmt = $conn->prepare("INSERT INTO admin (u_id, access_lvl) VALUES (?, 'full')");
+                    
+                    if (!$admin_stmt) {
+                        die("Prepare failed for Admin: " . $conn->error);
+                    }
+                
+                    $admin_stmt->bind_param("i", $user_id);
+                    if (!$admin_stmt->execute()) {
+                        $error = "Admin registration failed: " . $conn->error;
+                    }
+                    $admin_stmt->close();
                 } else {
                     $explorer_stmt = $conn->prepare("INSERT INTO Food_Explorer (user_id) VALUES (?)");
                 
@@ -206,6 +219,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         <select name="role" id="role" required>
                             <option value="food_explorer">Food Explorer</option>
                             <option value="vendor">Vendor</option>
+                            <option value="admin">Admin</option>
                         </select>
                     </div>
 

@@ -23,19 +23,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 die("Could not determine user ID");
             }
 
-            // Default role
-            $role = 'food_explorer';
+            // Get user type from the user table
+            $role = $user['user_type'] ?? 'food_explorer';
 
             // Check if vendor
-            $vendor_check = $conn->prepare("SELECT vendor_id FROM Vendor WHERE user_id = ?");
-            $vendor_check->bind_param("i", $user_id);
-            $vendor_check->execute();
-            $vendor_result = $vendor_check->get_result();
-
-            if ($vendor_result->num_rows === 1) {
-                $role = 'vendor';
-                $vendor_data = $vendor_result->fetch_assoc();
-                $_SESSION['vendor_id'] = $vendor_data['vendor_id'];
+            if ($role === 'vendor') {
+                $vendor_check = $conn->prepare("SELECT vendor_id FROM Vendor WHERE user_id = ?");
+                $vendor_check->bind_param("i", $user_id);
+                $vendor_check->execute();
+                $vendor_result = $vendor_check->get_result();
+                
+                if ($vendor_result->num_rows === 1) {
+                    $vendor_data = $vendor_result->fetch_assoc();
+                    $_SESSION['vendor_id'] = $vendor_data['vendor_id'];
+                }
             }
 
             $_SESSION['user_id'] = $user_id;
@@ -43,11 +44,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $_SESSION['email'] = $user['email'];
             $_SESSION['points'] = $user['points_earned'] ?? 0;
             $_SESSION['role'] = $role;
+            $_SESSION['user_type'] = $role;
 
-            if ($role === 'vendor') {
-                header("Location: vendor_dashboard.php");
-            } else {
-                header("Location: home.php");
+            // Redirect based on user type
+            switch ($role) {
+                case 'admin':
+                    header("Location: admin_dashboard.php");
+                    break;
+                case 'vendor':
+                    header("Location: vendor_dashboard.php");
+                    break;
+                default:
+                    header("Location: home.php");
             }
             exit();
         } else {
