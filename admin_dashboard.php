@@ -39,6 +39,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $stmt = $conn->prepare("INSERT INTO spin_challenge_option (sp_id, option_text) VALUES (?, ?)");
                         $stmt->bind_param("is", $challenge_id, $option_text);
                         $stmt->execute();
+                    } elseif ($challenge_type === 'Timed') {
+                        // Insert into timed_event_challenge table
+                        $start_time = $_POST['start_time'];
+                        $end_time = $_POST['end_time'];
+                        $max_participants = $_POST['max_participants'];
+                        
+                        $stmt = $conn->prepare("INSERT INTO timed_event_challenge (challenge_id, start_time, end_time, max_participants) VALUES (?, ?, ?, ?)");
+                        $stmt->bind_param("issi", $challenge_id, $start_time, $end_time, $max_participants);
+                        $stmt->execute();
                     }
                     $conn->commit();
                     header("Location: admin_dashboard.php?success=1");
@@ -96,17 +105,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 exit();
                 break;
+
+            case 'delete_event':
+                $event_id = $_POST['event_id'];
+                
+                // Start transaction
+                $conn->begin_transaction();
+                
+                try {
+                    // Delete from timed_event_challenge first (due to foreign key)
+                    $stmt = $conn->prepare("DELETE FROM timed_event_challenge WHERE challenge_id = ?");
+                    $stmt->bind_param("i", $event_id);
+                    $stmt->execute();
+                    
+                    // Delete from challenge
+                    $stmt = $conn->prepare("DELETE FROM challenge WHERE challenge_id = ?");
+                    $stmt->bind_param("i", $event_id);
+                    $stmt->execute();
+                    
+                    $conn->commit();
+                    header("Location: admin_dashboard.php?success=3");
+                    exit();
+                } catch (Exception $e) {
+                    $conn->rollback();
+                    header("Location: admin_dashboard.php?error=3");
+                    exit();
+                }
+                break;
         }
     }
 }
 
 // Fetch all spin challenges with their options
-$query = "SELECT c.*, sc.max_tries, GROUP_CONCAT(sco.option_text SEPARATOR '||') as options 
+$query = "SELECT c.*, 
+          sc.max_tries, 
+          GROUP_CONCAT(sco.option_text SEPARATOR '||') as options,
+          tec.start_time,
+          tec.end_time,
+          tec.max_participants
           FROM challenge c 
-          JOIN spin_challenge sc ON c.challenge_id = sc.challenge_id 
+          LEFT JOIN spin_challenge sc ON c.challenge_id = sc.challenge_id 
           LEFT JOIN spin_challenge_option sco ON sc.challenge_id = sco.sp_id 
-          WHERE c.type = 'Spin'
-          GROUP BY c.challenge_id";
+          LEFT JOIN timed_event_challenge tec ON c.challenge_id = tec.challenge_id
+          GROUP BY c.challenge_id
+          ORDER BY c.challenge_id DESC";
 $result = $conn->query($query);
 
 // Fetch all spin wheel options for the dropdown
@@ -454,6 +496,9 @@ $options_result = $conn->query($options_query);
                     case 2:
                         echo 'Challenge deleted successfully!';
                         break;
+                    case 3:
+                        echo 'Event deleted successfully!';
+                        break;
                 }
                 ?>
             </div>
@@ -470,7 +515,7 @@ $options_result = $conn->query($options_query);
                         echo 'Error deleting challenge!';
                         break;
                     case 3:
-                        echo 'Error adding spin wheel option!';
+                        echo 'Error deleting event!';
                         break;
                     case 4:
                         echo 'Error deleting spin wheel option!';
@@ -497,7 +542,7 @@ $options_result = $conn->query($options_query);
 
                     <div class="form-group">
                         <label for="challenge_type">Challenge Type</label>
-                        <select id="challenge_type" name="challenge_type" class="form-control" required>
+                        <select id="challenge_type" name="challenge_type" class="form-control" required onchange="toggleChallengeFields()">
                             <option value="Spin">Spin</option>
                             <option value="Timed">Timed</option>
                             <option value="Bingo">Bingo</option>
@@ -523,14 +568,33 @@ $options_result = $conn->query($options_query);
                         <input type="number" id="reward_pts" name="reward_pts" class="form-control" required min="1">
                     </div>
                     
-                    <div class="form-group">
-                        <label for="max_tries">Max Tries</label>
-                        <input type="number" id="max_tries" name="max_tries" class="form-control" required min="1" max="10">
+                    <div id="spin-fields">
+                        <div class="form-group">
+                            <label for="max_tries">Max Tries</label>
+                            <input type="number" id="max_tries" name="max_tries" class="form-control" required min="1" max="10">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="option_text">Initial Challenge Task</label>
+                            <textarea id="option_text" name="option_text" class="form-control" required rows="3" placeholder="Enter the first task"></textarea>
+                        </div>
                     </div>
                     
-                    <div class="form-group">
-                        <label for="option_text">Initial Challenge Task</label>
-                        <textarea id="option_text" name="option_text" class="form-control" required rows="3" placeholder="Enter the first task"></textarea>
+                    <div id="timed-fields" style="display: none;">
+                        <div class="form-group">
+                            <label for="start_time">Start Time</label>
+                            <input type="datetime-local" id="start_time" name="start_time" class="form-control" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="end_time">End Time</label>
+                            <input type="datetime-local" id="end_time" name="end_time" class="form-control" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="max_participants">Maximum Participants</label>
+                            <input type="number" id="max_participants" name="max_participants" class="form-control" required min="1">
+                        </div>
                     </div>
                     
                     <button type="submit" class="btn btn-primary">
@@ -552,52 +616,101 @@ $options_result = $conn->query($options_query);
                             <div class="challenge-item">
                                 <div class="challenge-header">
                                     <h3 class="challenge-title"><?= htmlspecialchars($challenge['description']) ?></h3>
-                                    <form method="POST" action="" style="display: inline;">
-                                        <input type="hidden" name="action" value="delete_challenge">
-                                        <input type="hidden" name="challenge_id" value="<?= $challenge['challenge_id'] ?>">
-                                        <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this challenge?')">
-                                            <i class="fas fa-trash"></i> Delete Challenge
-                                        </button>
-                                    </form>
+                                    <div class="challenge-actions">
+                                        <form method="POST" action="" style="display: inline;">
+                                            <input type="hidden" name="action" value="<?= $challenge['type'] === 'Timed' ? 'delete_event' : 'delete_challenge' ?>">
+                                            <input type="hidden" name="<?= $challenge['type'] === 'Timed' ? 'event_id' : 'challenge_id' ?>" value="<?= $challenge['challenge_id'] ?>">
+                                            <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this <?= strtolower($challenge['type']) ?>?')">
+                                                <i class="fas fa-trash"></i> Delete <?= $challenge['type'] ?>
+                                            </button>
+                                        </form>
+                                    </div>
                                 </div>
                                 
                                 <div class="challenge-details">
+                                    <p><strong>Type:</strong> <?= htmlspecialchars($challenge['type']) ?></p>
                                     <p><strong>Difficulty:</strong> <?= htmlspecialchars($challenge['difficulty_level']) ?></p>
                                     <p><strong>Time Limit:</strong> <?= htmlspecialchars($challenge['time_limit']) ?> minutes</p>
                                     <p><strong>Reward Points:</strong> <?= htmlspecialchars($challenge['reward_pts']) ?></p>
-                                    <p><strong>Max Tries:</strong> <?= htmlspecialchars($challenge['max_tries']) ?></p>
+                                    <?php if ($challenge['type'] === 'Spin'): ?>
+                                        <p><strong>Max Tries:</strong> <?= htmlspecialchars($challenge['max_tries']) ?></p>
+                                    <?php endif; ?>
+                                    <?php if ($challenge['type'] === 'Timed'): ?>
+                                        <p><strong>Start Time:</strong> <?= htmlspecialchars($challenge['start_time']) ?></p>
+                                        <p><strong>End Time:</strong> <?= htmlspecialchars($challenge['end_time']) ?></p>
+                                        <p><strong>Max Participants:</strong> <?= htmlspecialchars($challenge['max_participants']) ?></p>
+                                    <?php endif; ?>
                                 </div>
                                 
-                                <div class="challenge-options">
-                                    <?php 
-                                    $options = explode('||', $challenge['options']);
-                                    foreach ($options as $option): 
-                                    ?>
-                                        <div class="option-card">
-                                            <div class="option-text">
-                                                <?= htmlspecialchars($option) ?>
+                                <?php if ($challenge['type'] === 'Spin' && !empty($challenge['options'])): ?>
+                                    <div class="challenge-options">
+                                        <?php 
+                                        $options = explode('||', $challenge['options']);
+                                        foreach ($options as $option): 
+                                        ?>
+                                            <div class="option-card">
+                                                <div class="option-text">
+                                                    <?= htmlspecialchars($option) ?>
+                                                </div>
+                                                <div class="option-actions">
+                                                    <form method="POST" action="" style="display: inline;">
+                                                        <input type="hidden" name="action" value="delete_option">
+                                                        <input type="hidden" name="option_text" value="<?= htmlspecialchars($option) ?>">
+                                                        <input type="hidden" name="sp_id" value="<?= $challenge['challenge_id'] ?>">
+                                                        <button type="submit" class="btn btn-danger btn-small" onclick="return confirm('Are you sure you want to delete this option?')">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
                                             </div>
-                                            <div class="option-actions">
-                                                <form method="POST" action="" style="display: inline;">
-                                                    <input type="hidden" name="action" value="delete_option">
-                                                    <input type="hidden" name="option_text" value="<?= htmlspecialchars($option) ?>">
-                                                    <input type="hidden" name="sp_id" value="<?= $challenge['challenge_id'] ?>">
-                                                    <button type="submit" class="btn btn-danger btn-small" onclick="return confirm('Are you sure you want to delete this option?')">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    <?php endforeach; ?>
-                                </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         <?php endwhile; ?>
                     <?php else: ?>
-                        <p>No spin wheel challenges found. Add your first challenge!</p>
+                        <p>No challenges found. Add your first challenge!</p>
                     <?php endif; ?>
                 </div>
             </div>
         </div>
     </div>
+
+    <script>
+    function toggleChallengeFields() {
+        const challengeType = document.getElementById('challenge_type').value;
+        const spinFields = document.getElementById('spin-fields');
+        const timedFields = document.getElementById('timed-fields');
+        
+        if (challengeType === 'Spin') {
+            spinFields.style.display = 'block';
+            timedFields.style.display = 'none';
+            document.getElementById('max_tries').required = true;
+            document.getElementById('option_text').required = true;
+            document.getElementById('start_time').required = false;
+            document.getElementById('end_time').required = false;
+            document.getElementById('max_participants').required = false;
+        } else if (challengeType === 'Timed') {
+            spinFields.style.display = 'none';
+            timedFields.style.display = 'block';
+            document.getElementById('max_tries').required = false;
+            document.getElementById('option_text').required = false;
+            document.getElementById('start_time').required = true;
+            document.getElementById('end_time').required = true;
+            document.getElementById('max_participants').required = true;
+        } else {
+            spinFields.style.display = 'none';
+            timedFields.style.display = 'none';
+            document.getElementById('max_tries').required = false;
+            document.getElementById('option_text').required = false;
+            document.getElementById('start_time').required = false;
+            document.getElementById('end_time').required = false;
+            document.getElementById('max_participants').required = false;
+        }
+    }
+
+    // Call on page load
+    document.addEventListener('DOMContentLoaded', toggleChallengeFields);
+    </script>
 </body>
 </html> 
