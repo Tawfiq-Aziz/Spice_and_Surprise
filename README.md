@@ -27,13 +27,6 @@ A modern food discovery app that helps users explore local food vendors, read re
    - Write your own reviews and discover new food adventures!
 
 ## Technologies Used
-
-- **Frontend**: HTML, CSS, JavaScript
-- **Backend**: PHP
-- **Database**: MySQL
-
-
-=======
 - **Frontend**: HTML, CSS
 - **Backend**: PHP
 - **Database**: MySQL
